@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bancada Freela</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky header with day counter + tab rail; one main column that splits into work (left) and log (right) on wide screens */
+:root{
+  --bg:#ECEFF3; --surface:#FFFFFF; --surface-2:#F5F7FA; --ink:#141B24; --muted:#5A6676; --line:#D5DCE4;
+  --accent:#2747B8; --accent-ink:#FFFFFF; --accent-soft:#E2E8F8;
+  --ok:#1E7547; --ok-soft:#DCF0E3; --warn:#9A5400; --warn-soft:#FAEBD4; --bad:#B42318; --bad-soft:#FADFDB;
+  --f-display:'Schibsted Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  --f-body:'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-mono:'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0E141B; --surface:#161F29; --surface-2:#1C2733; --ink:#E5EBF1; --muted:#93A3B5; --line:#2B3846;
+  --accent:#86A4F2; --accent-ink:#0E141B; --accent-soft:#1F2C4A;
+  --ok:#6CCB97; --ok-soft:#173527; --warn:#F0B35E; --warn-soft:#3A2A12; --bad:#F2877B; --bad-soft:#3E1C19; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#0E141B; --surface:#161F29; --surface-2:#1C2733; --ink:#E5EBF1; --muted:#93A3B5; --line:#2B3846;
+  --accent:#86A4F2; --accent-ink:#0E141B; --accent-soft:#1F2C4A;
+  --ok:#6CCB97; --ok-soft:#173527; --warn:#F0B35E; --warn-soft:#3A2A12; --bad:#F2877B; --bad-soft:#3E1C19; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.2}
+h2{font-size:1.25rem;font-weight:800}
+h3{font-size:1rem;font-weight:700}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* header */
+header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;gap:16px;padding-block:12px 8px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+.brand h1{font-size:1.15rem;font-weight:800;letter-spacing:-.01em}
+.daypill{font-family:var(--f-mono);font-size:.8rem;padding:2px 8px;border-radius:4px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.focus{color:var(--muted);font-size:.85rem;flex:1;min-width:0}
+@media (max-width:640px){.focus{order:3;flex-basis:100%}.brand{flex:1}}
+.saved{font-size:.75rem;color:var(--muted);font-family:var(--f-mono);transition:opacity .3s}
+nav.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin-bottom:-1px}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs a{padding:8px 12px;text-decoration:none;color:var(--muted);font-weight:500;font-size:.9rem;border-bottom:2px solid transparent;white-space:nowrap}
+nav.tabs a[aria-current="page"]{color:var(--ink);border-color:var(--accent)}
+nav.tabs a .badge{display:inline-block;min-width:18px;padding:0 5px;margin-left:4px;border-radius:9px;background:var(--warn-soft);color:var(--warn);font-size:.72rem;font-family:var(--f-mono);text-align:center}
+
+main{padding-block:20px 64px;display:flex;flex-direction:column;gap:20px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px;align-items:start}
+.col{display:flex;flex-direction:column;gap:20px;min-width:0}
+@media (max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.panel-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:640px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.stat .v{font-family:var(--f-mono);font-size:1.35rem;font-weight:500;font-variant-numeric:tabular-nums}
+.stat .v small{font-size:.8rem;color:var(--muted)}
+.bar{height:4px;background:var(--surface-2);border-radius:2px;overflow:hidden}
+.bar > i{display:block;height:100%;background:var(--accent);border-radius:2px}
+.bar.ok > i{background:var(--ok)}
+
+/* checklist rows */
+.list{display:flex;flex-direction:column}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-child{border-top:0}
+.row input[type=checkbox]{width:18px;height:18px;margin:2px 0 0;accent-color:var(--accent);cursor:pointer}
+.row .t{font-weight:600}
+.row .d{color:var(--muted);font-size:.88rem}
+.row.done .t{text-decoration:line-through;text-decoration-color:var(--muted)}
+.row.done .t,.row.done .d{color:var(--muted)}
+.row.off{opacity:.55}
+.row label{cursor:pointer;min-width:0}
+.mins{font-family:var(--f-mono);font-size:.78rem;color:var(--muted);white-space:nowrap}
+.block-label{font-family:var(--f-mono);font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding-top:4px}
+
+/* chips */
+.chip{display:inline-flex;align-items:center;gap:4px;padding:1px 8px;border-radius:4px;font-size:.75rem;font-weight:500;background:var(--surface-2);color:var(--muted);border:1px solid var(--line);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok);border-color:transparent}
+.chip.warn{background:var(--warn-soft);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+.chip.acc{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+
+/* alerts */
+.alert{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:6px;background:var(--warn-soft);color:var(--ink);font-size:.9rem}
+.alert .k{color:var(--warn);font-family:var(--f-mono);font-size:.75rem;font-weight:500;text-transform:uppercase;padding-top:2px;white-space:nowrap}
+.alert.info{background:var(--accent-soft)}
+.alert.info .k{color:var(--accent)}
+.alert > div{flex:1;min-width:0}
+
+/* forms */
+input[type=text],input[type=number],input[type=date],select,textarea{background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:7px 10px;min-width:0}
+textarea{width:100%;resize:vertical;min-height:110px;line-height:1.5}
+textarea.code{font-family:var(--f-mono);font-size:.85rem}
+.inline{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.inline > input[type=text]{flex:1 1 180px}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.field > span{font-size:.78rem;color:var(--muted);font-weight:500}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:.88rem;white-space:nowrap}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{opacity:.9;color:var(--accent-ink)}
+.btn.danger{color:var(--bad)}
+.btn.danger.armed{background:var(--bad);color:var(--surface);border-color:var(--bad)}
+.btn.sm{padding:3px 9px;font-size:.8rem}
+.iconbtn{border:0;background:none;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:4px;font-size:1rem;line-height:1}
+.iconbtn:hover{color:var(--bad);background:var(--bad-soft)}
+
+/* tables */
+.tbl-wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;white-space:nowrap}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr.cur td{background:var(--accent-soft)}
+
+/* plan weeks */
+.weeks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+@media (max-width:900px){.weeks{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:520px){.weeks{grid-template-columns:minmax(0,1fr)}}
+.wk{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.wk.cur{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.wk .when{font-family:var(--f-mono);font-size:.75rem;color:var(--muted)}
+
+/* clients */
+.stage-group{display:flex;flex-direction:column;gap:8px}
+.stage-group > .gh{display:flex;align-items:baseline;gap:8px}
+.client{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.client > summary{list-style:none;cursor:pointer;padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.client > summary::-webkit-details-marker{display:none}
+.client > summary .nm{font-weight:600;flex:1 1 140px;min-width:0}
+.client .body{padding:0 14px 14px;display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:12px}
+.funnel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.82rem;color:var(--muted)}
+.funnel b{color:var(--ink);font-weight:600}
+
+/* templates */
+.tpl{display:flex;flex-direction:column;gap:8px}
+.tpl + .tpl{border-top:1px solid var(--line);padding-top:16px}
+details.rules > summary{cursor:pointer;font-weight:600}
+details.rules ul{margin:8px 0 0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.kbd{font-family:var(--f-mono);font-size:.82rem;background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:1px 6px;word-break:break-all}
+.datenav{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.datenav .lbl{font-family:var(--f-display);font-weight:700;font-size:1.05rem;min-width:0}
+.empty{color:var(--muted);font-size:.9rem;padding:8px 0}
+.note-entry{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:4px}
+.note-entry .txt{white-space:pre-wrap;overflow-wrap:anywhere}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:6px;font-size:.88rem;z-index:20}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="top-row">
+      <div class="brand"><h1>Bancada Freela</h1><span class="daypill" id="daypill"></span></div>
+      <div class="focus" id="focus"></div>
+      <span class="saved" id="saved">salvo</span>
+    </div>
+    <nav class="tabs" id="tabs"></nav>
+  </div>
+</header>
+<main class="wrap" id="main"></main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+const KEY='bancada-freela-v1';
+
+/* ---------- datas ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const ymd=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parse=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)};
+const addDays=(s,n)=>{const d=parse(s);d.setDate(d.getDate()+n);return ymd(d)};
+const diff=(a,b)=>Math.round((parse(b)-parse(a))/864e5);
+const today=()=>ymd(new Date());
+const WD=['dom','seg','ter','qua','qui','sex','sáb'];
+const WDL=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
+const MO=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+const fmtD=s=>{const d=parse(s);return WD[d.getDay()]+' '+d.getDate()+' '+MO[d.getMonth()]};
+const fmtS=s=>{const d=parse(s);return pad(d.getDate())+'/'+pad(d.getMonth()+1)};
+const usd=n=>'US$ '+(Math.round(n*100)/100).toLocaleString('pt-BR');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+/* ---------- conteúdo do plano ---------- */
+const PLATFORMS=['Codementor','Fiverr','VibeFix','humans fix ai','Contra','Superteam Earn','Opire/GitHub','Algora','Season of Docs','Immunefi','Cliente direto'];
+const PLAT_INFO={
+  'Codementor':{role:'Renda rápida',prio:'Alta'},'Fiverr':{role:'Renda rápida (inbound)',prio:'Alta'},
+  'VibeFix':{role:'Renda rápida (bounty)',prio:'Alta, testar'},'humans fix ai':{role:'Renda rápida',prio:'Alta, testar'},
+  'Contra':{role:'Vitrine + link',prio:'Média'},'Superteam Earn':{role:'Web3',prio:'Média'},
+  'Opire/GitHub':{role:'Caça semanal',prio:'Baixa'},'Algora':{role:'Portfólio automático',prio:'Baixa'},
+  'Season of Docs':{role:'Documentação',prio:'Sazonal'},'Immunefi':{role:'Longo prazo',prio:'Só se estudar segurança'},
+  'Cliente direto':{role:'Fora de plataforma',prio:'—'}
+};
+const ROUTINE=[
+  {id:'m1',block:'Manhã',min:10,plats:['Fiverr'],t:'Fiverr',d:'Responder mensagens em até 1 h; checar pedidos e "Buyer Requests"/briefs se disponíveis.'},
+  {id:'m2',block:'Manhã',min:10,plats:['Codementor'],t:'Codementor',d:'Ver pedidos novos de Debugging; responder os que você resolve em menos de 1 h.'},
+  {id:'m3',block:'Manhã',min:10,plats:['VibeFix','humans fix ai'],t:'VibeFix e humans fix ai',d:'Ver bugs novos; pegar só os que batem com sua stack e têm valor e escopo claros.'},
+  {id:'t1',block:'Tarde',min:10,plats:['Superteam Earn'],t:'Superteam Earn',d:'Ver só Projects de Development novos; aplicar com mensagem curta e link de caso parecido.'},
+  {id:'t2',block:'Tarde',min:10,plats:['Codementor','Fiverr'],t:'Codementor + Fiverr',d:'Segunda rodada de respostas (o horário dos EUA esquenta).'},
+  {id:'t3',block:'Tarde',min:10,plats:['Follow-up'],t:'Follow-up',d:'Clientes de diagnóstico que não fecharam; clientes entregues para oferecer manutenção.'}
+];
+const WEEKLY=[
+  {id:'w1',min:20,plats:['Opire/GitHub'],t:'Opire',d:'Liste bounties abertos e confirme no GitHub se a issue ainda está aberta. Num levantamento de mar/2026, 8 de 30 bounties estavam em issues já fechadas.'},
+  {id:'w2',min:20,plats:['Opire/GitHub'],t:'Busca no GitHub',d:'Rode a busca salva com created:>= da última semana. Descarte issues com PRs concorrentes abertos.',gh:true},
+  {id:'w3',min:0,plats:[],t:'Escolha no máximo 1 bounty',d:'Que você resolva em até 3 h. Comente /try antes de começar; depois do merge, /claim #<número> no PR.'},
+  {id:'w4',min:10,plats:['Season of Docs'],t:'Season of Docs (só na temporada)',d:'Veja organizações novas e mande 1 contato.'},
+  {id:'w5',min:30,plats:[],t:'Revisão',d:'Confira a tabela de semanas abaixo e decida o que cortar.'},
+  {id:'w6',min:10,plats:[],t:'Preço',d:'Depois de 5 avaliações numa plataforma, suba os pacotes em 20 a 30%.'}
+];
+const BASE=[
+  {id:'b1',t:'Bio padrão em inglês, 3 versões',d:'1 linha, 3 linhas e 1 parágrafo. Foco: "I fix broken apps and bugs, fast, at a fixed price."'},
+  {id:'b2',t:'Foto profissional e o mesmo username em tudo',d:''},
+  {id:'b3',t:'GitHub arrumado',d:'README de perfil, 3 repositórios fixados, cada um com README curto (problema, stack, print).'},
+  {id:'b4',t:'3 estudos de caso curtos',d:'Antes, o que quebrou, o que você fez, resultado. Pode ser um app quebrado que você mesmo conserta de propósito.'},
+  {id:'b5',t:'Vídeo de 60 a 90 s mostrando um conserto real',d:'Loom ou similar. Serve para Fiverr, Contra e Codementor.'},
+  {id:'b6',t:'Lista de stacks que você entrega com confiança',d:'Nicho sugerido: React/Next, Node, Supabase, Firebase, deploy (Vercel, Netlify).'},
+  {id:'b7',t:'Recebimento em USD',d:'Conta global que receba de Stripe, PayPal e Payoneer + carteira Solana (Phantom ou Backpack) para USDC/USDG.'},
+  {id:'b8',t:'Pacotes de preço fixo definidos',d:'Veja a aba Modelos. Suba após as primeiras 5 avaliações.'}
+];
+const SETUP=[
+  {id:'codementor',name:'Codementor',when:'Dia 2',url:'https://www.codementor.io',steps:[
+    'Criar conta como mentor/expert e conectar o GitHub',
+    'Headline focada em problema: "Debugging & fixing broken React/Node/Supabase apps"',
+    'Listar só 5 a 8 tecnologias, com Debugging entre elas',
+    'Taxa por 15 min começando baixa (há experts a partir de US$ 8 / 15 min)',
+    'Ativar notificações de novos pedidos no celular']},
+  {id:'fiverr',name:'Fiverr',when:'Dia 2',url:'https://www.fiverr.com',steps:[
+    'Conta de vendedor, perfil com a bio de 1 parágrafo e o vídeo',
+    'Gig 1: "I will fix your broken Lovable, Bolt or Cursor app"',
+    'Gig 2: "I will fix bugs in your React or Node app"',
+    'Três níveis no gig = Diagnóstico, Conserto pontual, Resgate completo',
+    'Perguntas obrigatórias: link do repo, print do erro, onde roda',
+    'FAQ: o pacote cobre só o problema descrito; o resto vira novo orçamento']},
+  {id:'vibefix',name:'VibeFix e humans fix ai',when:'Dia 3',url:'https://www.producthunt.com/p/vibefix',steps:[
+    'Cadastro como desenvolvedor na VibeFix',
+    'Cadastro como desenvolvedor na humans fix ai',
+    'Bio de 3 linhas e link do GitHub nos dois',
+    '1ª semana só observar: valor médio, nº de devs disputando, tempo até pagamento',
+    'Decidir em 2 semanas se valem o tempo']},
+  {id:'contra',name:'Contra',when:'Dia 4',url:'https://contra.com',steps:[
+    'Perfil grátis com os 3 estudos de caso como projetos',
+    'Criar "Services" com os mesmos pacotes do Fiverr',
+    'Usar como link para mandar a clientes diretos (sem comissão)']},
+  {id:'superteam',name:'Superteam Earn',when:'Dia 4',url:'https://earn.superteam.fun',steps:[
+    'Atualizar skills para só desenvolvimento',
+    'Notificações só para listings de Development',
+    'Preferir Projects a bounties abertos de conteúdo',
+    'Entrar no Discord/Telegram do Superteam Brazil']},
+  {id:'opire',name:'Opire, GitHub e Algora',when:'Dia 4',url:'https://opire.dev',steps:[
+    'Conectar o GitHub na Opire',
+    'Conectar o GitHub na Algora (perfil a partir das contribuições)',
+    'Salvar no GitHub a busca de bounties (veja aba Semana)',
+    'Entender o fluxo Opire: /try na issue, /claim #<número> no PR após o merge']},
+  {id:'sod',name:'Google Season of Docs',when:'Sazonal',url:'https://developers.google.com/season-of-docs',steps:[
+    'Acompanhar o anúncio das organizações aceitas',
+    'Contatar direto as organizações cujo stack você domina']},
+  {id:'immunefi',name:'Immunefi (opcional)',when:'Opcional',url:'https://immunefi.com',steps:[
+    'Só criar se for dedicar horas fixas por semana a estudar segurança de contratos']}
+];
+const DIAG=[
+  'O projeto instala e roda localmente? Versões de Node e dependências conferidas.',
+  'Build de produção passa? Erros de tipo e lint listados.',
+  'Variáveis de ambiente e segredos: algum exposto no front ou no repo?',
+  'Autenticação: login, logout, sessão e rotas protegidas funcionam?',
+  'Banco: schema coerente, migrations, regras de acesso (ex.: RLS no Supabase) ativas?',
+  'Integrações externas (pagamento, e-mail, APIs) com chaves e webhooks certos?',
+  'Deploy: onde roda, logs de erro, domínio e HTTPS.',
+  'Código gerado por IA: duplicações, componentes mortos, lógica sobrescrita.',
+  'Veredito: consertar ou reescrever partes? Estimativa em horas e preço fechado.'
+];
+const STAGES=[
+  {id:'triagem',l:'Triagem',h:'Peça repo, print do erro e onde o app roda. Sem isso, não segue.'},
+  {id:'diagnostico',l:'Diagnóstico',h:'Pago, até 24 h. Rode o checklist e entregue relatório de 1 página.'},
+  {id:'orcamento',l:'Orçamento',h:'Lista do que será feito, prazo e preço. O que não está na lista é outro pedido.'},
+  {id:'entrega',l:'Em entrega',h:'Branch separada, PR descrito e vídeo curto mostrando funcionando.'},
+  {id:'entregue',l:'Entregue',h:'Mesmo dia: peça avaliação e ofereça manutenção. Follow-up em 7 dias.'},
+  {id:'manutencao',l:'Manutenção',h:'Cliente recorrente.'},
+  {id:'perdido',l:'Perdido',h:''}
+];
+const STAGE=Object.fromEntries(STAGES.map(s=>[s.id,s]));
+const PKGS=[
+  {id:'diag',n:'Diagnóstico',w:'Análise do repo, relatório do que quebra, orçamento fechado do conserto',p:'24 h',v:'US$ 30 a 50'},
+  {id:'fix',n:'Conserto pontual',w:'Até 1 bug ou erro de build/deploy resolvido',p:'24 a 48 h',v:'US$ 60 a 120'},
+  {id:'rescue',n:'Resgate completo',w:'Auth, banco, segurança básica (ex.: RLS), deploy funcionando',p:'3 a 5 dias',v:'US$ 300 a 800'},
+  {id:'maint',n:'Manutenção mensal',w:'X horas/mês de correções e pequenas features',p:'Mensal',v:'US$ 150 a 400'}
+];
+const TEMPLATES=[
+  {id:'gig',t:'Descrição do gig',u:'Fiverr / Contra',b:`Built your app with Lovable, Bolt, Cursor or v0 and now it's broken?
+
+I fix the part AI can't: auth, database rules, build errors and deployment.
+
+How it works:
+1. Send your repo link and a screenshot of the error.
+2. I diagnose it within 24h and give you a fixed price.
+3. I fix it on a separate branch and send a short video showing it working.
+
+Stack: React, Next.js, Node, Supabase, Firebase, Vercel.
+No surprises: you pay for what's listed, nothing else.`},
+  {id:'vague',t:'Resposta a pedido vago',u:'Qualquer plataforma',b:`Hi [name], thanks for the details. To give you an exact price I need to look at the code first.
+My Diagnosis package ([price], 24h) gives you a 1-page report of what's broken and a fixed quote.
+If you go ahead with the fix, the diagnosis cost is deducted. Can you share the repo?`},
+  {id:'apply',t:'Aplicação curta',u:'Superteam Projects / bounty',b:`Hi! I can deliver [deliverable] in [X days].
+Similar work: [link to case or PR].
+Plan: [3 short steps].
+Questions: [1 question that shows you read the brief].`},
+  {id:'maint',t:'Oferta de manutenção',u:'Pós-entrega',b:`Glad it's running! Apps built with AI tools tend to break again as you add features.
+I offer a monthly plan: [X] hours of fixes and small features for [price]/month, response within 24h.
+Want me to set it up?`},
+  {id:'triage',t:'Pedido de triagem',u:'Primeiro contato (derivado do processo)',b:`Hi [name]! Happy to take a look. To get started I need 3 things:
+1. Link to the repo (or access to it)
+2. A screenshot of the error
+3. Where the app runs (Vercel, Netlify, local, etc.)
+With that I can tell you the next step within the hour.`},
+  {id:'review',t:'Pedido de avaliação',u:'Pós-entrega (derivado do processo)',b:`Everything is merged and the video shows it working. If you're happy with the result, a quick review would help me a lot.
+Thanks for the trust, [name]!`},
+  {id:'follow',t:'Follow-up de 7 dias',u:'Derivado do processo',b:`Hi [name], is everything running smoothly?
+While doing the diagnosis I noted 2 more points worth fixing: [point 1] and [point 2].
+Want a fixed quote for those?`}
+];
+const GOALS={
+  1:{foco:'Montar base e contas',items:[
+    {id:'g1a',t:'Base pronta',auto:()=>[cnt(BASE.map(b=>b.id),S.setup),BASE.length]},
+    {id:'g1b',t:'Codementor no ar',auto:()=>setupProg('codementor')},
+    {id:'g1c',t:'Fiverr no ar',auto:()=>setupProg('fiverr')},
+    {id:'g1d',t:'VibeFix e humans fix ai no ar',auto:()=>setupProg('vibefix')},
+    {id:'g1e',t:'Contra no ar',auto:()=>setupProg('contra')},
+    {id:'g1f',t:'1 bounty Opire tentado'}]},
+  2:{foco:'Primeiras vendas',items:[
+    {id:'g2a',t:'3 diagnósticos ou consertos vendidos',auto:()=>[S.clients.filter(c=>c.paid).length,3]},
+    {id:'g2b',t:'Responder tudo em até 1 h'}]},
+  3:{foco:'Prova social',items:[
+    {id:'g3a',t:'5 avaliações somadas',auto:()=>[sumReviews(),5]},
+    {id:'g3b',t:'1 estudo de caso novo publicado no Contra e GitHub'}]},
+  4:{foco:'Cortar e subir',items:[
+    {id:'g4a',t:'Cortar a plataforma que não gerou nada'},
+    {id:'g4b',t:'Subir preços onde há 5 avaliações'},
+    {id:'g4c',t:'1 cliente em manutenção',auto:()=>[S.clients.filter(c=>c.stage==='manutencao').length,1]}]}
+};
+
+/* ---------- estado ---------- */
+function defaults(){return{v:1,startDate:today(),weeklyDay:5,days:{},weeks:{},setup:{},goals:{},reviews:{},status:{},clients:[],todos:[],tpl:{},pkg:{},scratch:'',ghLang:'typescript'}}
+function load(){
+  let s=null;
+  try{s=JSON.parse(localStorage.getItem(KEY)||'null')}catch(e){}
+  return Object.assign(defaults(),s||{});
+}
+let S=load();
+let storageOk=true;
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(S));storageOk=true}catch(e){storageOk=false}
+  const el=document.getElementById('saved');
+  el.textContent=storageOk?'salvo '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}):'não salvou: exporte os dados';
+}
+let saveT;function saveSoon(){clearTimeout(saveT);saveT=setTimeout(save,400)}
+
+function ref(path,create){
+  const parts=path.split('.');let o=S;
+  for(let i=0;i<parts.length-1;i++){
+    const k=parts[i];
+    if(k[0]==='#'){o=o.find(x=>x.id===k.slice(1));if(!o)return[null]}
+    else{if(o[k]==null){if(!create)return[null];o[k]={}}o=o[k]}
+  }
+  return[o,parts[parts.length-1]];
+}
+const get=p=>{const[o,k]=ref(p,false);return o?o[k]:undefined};
+const set=(p,v)=>{const[o,k]=ref(p,true);if(o)o[k]=v};
+const cnt=(ids,obj)=>ids.filter(i=>obj&&obj[i]).length;
+function setupProg(id){const p=SETUP.find(x=>x.id===id);return[cnt(p.steps.map((_,i)=>id+i),S.setup),p.steps.length]}
+const sumReviews=()=>Object.values(S.reviews).reduce((a,b)=>a+(+b||0),0);
+const status=p=>p==='Follow-up'?'ativa':(S.status[p]||'ativa');
+const itemActive=it=>it.plats.some(p=>status(p)==='ativa');
+
+/* ---------- cálculos ---------- */
+const dayNum=d=>diff(S.startDate,d)+1;
+const weekOf=d=>Math.max(1,Math.floor((dayNum(d)-1)/7)+1);
+const planWeek=d=>{const n=dayNum(d);return n<1?1:Math.min(4,Math.ceil(n/7))};
+const weekRange=w=>{const a=addDays(S.startDate,(w-1)*7);return[a,addDays(a,6)]};
+function credit(acc,plats,min){if(!min)return;const ps=plats.length?plats:['Geral'];ps.forEach(p=>{acc.by[p]=(acc.by[p]||0)+min/ps.length});acc.total+=min}
+function dayProspect(date){
+  const acc={total:0,by:{}};const d=S.days[date];if(!d)return acc;
+  ROUTINE.forEach(it=>{if(d.routine&&d.routine[it.id])credit(acc,it.plats,it.min)});
+  (d.extra||[]).forEach(e=>credit(acc,[e.p],+e.min||0));
+  return acc;
+}
+function weekStats(w){
+  const[a,b]=weekRange(w);const acc={total:0,by:{}};let deliv=0;
+  for(let d=a;d<=b;d=addDays(d,1)){const p=dayProspect(d);acc.total+=p.total;for(const k in p.by)acc.by[k]=(acc.by[k]||0)+p.by[k];deliv+=+(S.days[d]&&S.days[d].deliv)||0}
+  const wk=S.weeks[w]||{};WEEKLY.forEach(it=>{if(wk.steps&&wk.steps[it.id])credit(acc,it.plats,it.min)});
+  const paid=S.clients.filter(c=>c.paid&&c.paidDate>=a&&c.paidDate<=b);
+  const rev=paid.reduce((s,c)=>s+(+c.value||0),0);
+  const byRev={};paid.forEach(c=>{byRev[c.platform]=(byRev[c.platform]||0)+(+c.value||0)});
+  const best=Object.entries(byRev).sort((x,y)=>y[1]-x[1])[0];
+  return{a,b,prospH:acc.total/60,deliv,closed:paid.length,rev,best:best?best[0]:'',by:acc.by};
+}
+function platStats(){
+  const res={};PLATFORMS.forEach(p=>res[p]={min:0,sales:0,rev:0});
+  for(const d in S.days){const p=dayProspect(d);for(const k in p.by)if(res[k])res[k].min+=p.by[k]}
+  for(const w in S.weeks){const wk=S.weeks[w];WEEKLY.forEach(it=>{if(wk.steps&&wk.steps[it.id])it.plats.forEach(p=>{if(res[p])res[p].min+=it.min/it.plats.length})})}
+  S.clients.forEach(c=>{if(c.paid&&res[c.platform]){res[c.platform].sales++;res[c.platform].rev+=+c.value||0}});
+  return res;
+}
+function routineDone(date){const d=S.days[date];const act=ROUTINE.filter(itemActive);return act.length>0&&act.every(it=>d&&d.routine&&d.routine[it.id])}
+function streak(){let n=0,d=today();if(!routineDone(d))d=addDays(d,-1);while(routineDone(d)&&diff(S.startDate,d)>=0){n++;d=addDays(d,-1)}return n}
+function goalState(g){if(g.auto){const[c,t]=g.auto();return{done:c>=t,c,t}}return{done:!!S.goals[g.id]}}
+function dueFollowups(date){return S.clients.filter(c=>c.followUp&&c.followUp<=date&&c.stage!=='perdido')}
+function cutCandidates(){const st=platStats();return PLATFORMS.filter(p=>status(p)==='ativa'&&st[p].min>180&&st[p].sales===0)}
+
+/* ---------- UI ---------- */
+const TABS=[['hoje','Hoje'],['semana','Semana'],['metas','Metas'],['clientes','Clientes'],['modelos','Modelos'],['setup','Setup'],['notas','Notas'],['dados','Dados']];
+let viewDate=today(), viewWeek=null;
+const route=()=>{const h=location.hash.slice(1);return TABS.some(t=>t[0]===h)?h:'hoje'};
+const main=document.getElementById('main');
+
+function header(){
+  const t=today(),n=dayNum(t),pw=planWeek(t);
+  document.getElementById('daypill').textContent=n<1?'começa '+fmtS(S.startDate):(n<=30?'dia '+pad(n)+'/30':'dia '+n);
+  document.getElementById('focus').textContent=n>30?'Plano de 30 dias concluído. Revise e repita o ciclo.':'Semana '+pw+' · '+GOALS[pw].foco;
+  const due=dueFollowups(t).length;
+  const r=route();
+  document.getElementById('tabs').innerHTML=TABS.map(([id,l])=>`<a href="#${id}" ${r===id?'aria-current="page"':''}>${l}${id==='clientes'&&due?`<span class="badge">${due}</span>`:''}</a>`).join('');
+}
+function check(path,checked,t,d,extra,cls){
+  const id='c_'+path.replace(/[^a-z0-9]/gi,'_');
+  return `<div class="row ${checked?'done':''} ${cls||''}"><input type="checkbox" id="${id}" data-check="${esc(path)}" ${checked?'checked':''}><label for="${id}"><div class="t">${t}</div>${d?`<div class="d">${d}</div>`:''}</label><div>${extra||''}</div></div>`;
+}
+function bar(c,t){const p=Math.min(100,t?c/t*100:0);return `<div class="bar ${p>=100?'ok':''}"><i style="width:${p}%"></i></div>`}
+function goalRow(g){
+  const s=goalState(g);
+  if(g.auto)return `<div class="row ${s.done?'done':''}"><input type="checkbox" disabled ${s.done?'checked':''} aria-label="automático"><div><div class="t">${esc(g.t)}</div><div style="margin-top:6px">${bar(s.c,s.t)}</div></div><div class="mins">${s.c}/${s.t}</div></div>`;
+  return check('goals.'+g.id,s.done,esc(g.t),'','');
+}
+
+function vHoje(){
+  const d=viewDate,isToday=d===today(),day=S.days[d]||{},n=dayNum(d),pw=planWeek(d);
+  const pr=dayProspect(d);
+  const monthRev=S.clients.filter(c=>c.paid&&c.paidDate>=S.startDate&&diff(S.startDate,c.paidDate)<30).reduce((s,c)=>s+(+c.value||0),0);
+  const paidN=S.clients.filter(c=>c.paid).length, rv=sumReviews();
+  const alerts=[];
+  dueFollowups(d).forEach(c=>alerts.push(['follow-up',`<b>${esc(c.name)}</b> (${esc(STAGE[c.stage].l)}, ${esc(c.platform)}): ${c.stage==='entregue'?'"Está tudo rodando? Achei mais 2 pontos…"':'retome o contato'}. <a href="#clientes">Abrir</a>`]));
+  const wd=parse(d).getDay(),wk=weekOf(d),wkS=(S.weeks[wk]||{}).steps||{};
+  if(wd===S.weeklyDay&&cnt(WEEKLY.map(x=>x.id),wkS)<WEEKLY.length)alerts.push(['semanal','Hoje é dia da rotina semanal (2 h): caça open source e revisão. <a href="#semana">Abrir semana</a>','info']);
+  cutCandidates().forEach(p=>alerts.push(['corte',`<b>${esc(p)}</b> passou de 3 h de prospecção sem venda. Pelo critério do plano, mova para a rotina semanal em <a href="#metas">Metas</a>.`]));
+  if(n<1)alerts.push(['início',`O plano começa em ${fmtD(S.startDate)}. Ajuste a data em <a href="#dados">Dados</a>.`,'info']);
+
+  const blocks=['Manhã','Tarde'].map(b=>`<div class="block-label">${b}</div><div class="list">`+ROUTINE.filter(it=>it.block===b).map(it=>{
+    const act=itemActive(it);
+    return check(`days.${d}.routine.${it.id}`,!!(day.routine&&day.routine[it.id]),esc(it.t),esc(it.d)+(act?'':' <span class="chip">fora da rotina diária</span>'),`<span class="mins">${it.min} min</span>`,act?'':'off');
+  }).join('')+'</div>').join('');
+  const todos=S.todos.filter(t=>!t.done||t.doneDate===d);
+  const g=GOALS[pw];
+  return `
+  <div class="datenav">
+    <button class="btn sm" data-act="day" data-n="-1" aria-label="dia anterior">‹</button>
+    <span class="lbl">${isToday?'Hoje, ':''}${fmtD(d)}</span>
+    <button class="btn sm" data-act="day" data-n="1" aria-label="próximo dia">›</button>
+    ${isToday?'':'<button class="btn sm" data-act="day" data-n="0">Voltar para hoje</button>'}
+    <span class="chip acc mono">${n<1?'antes do plano':'dia '+n}</span>
+  </div>
+  <div class="stats">
+    <div class="stat"><span class="eyebrow">Prospecção ${isToday?'hoje':'no dia'}</span><span class="v">${Math.round(pr.total)}<small> / 60 min</small></span>${bar(pr.total,60)}</div>
+    <div class="stat"><span class="eyebrow">Receita 30 dias</span><span class="v">${usd(monthRev)}</span><span class="small muted">pedidos pagos no plano</span></div>
+    <div class="stat"><span class="eyebrow">Vendas pagas</span><span class="v">${paidN}</span><span class="small muted">sequência: ${streak()} dia(s) de rotina completa</span></div>
+    <div class="stat"><span class="eyebrow">Avaliações</span><span class="v">${rv}<small> / 5</small></span>${bar(rv,5)}</div>
+  </div>
+  ${alerts.length?`<div class="col" style="gap:8px">${alerts.map(a=>`<div class="alert ${a[2]||''}"><span class="k">${a[0]}</span><div>${a[1]}</div></div>`).join('')}</div>`:''}
+  <div class="grid2">
+    <div class="col">
+      <section class="panel">
+        <div class="panel-head"><h2>Missões do dia</h2><span class="mono small muted">${cnt(ROUTINE.filter(itemActive).map(x=>x.id),day.routine)}/${ROUTINE.filter(itemActive).length}</span></div>
+        <p class="small muted" style="margin:0">Dois blocos nos horários em que clientes dos EUA estão ativos. O resto do dia é entrega.</p>
+        ${blocks}
+        <details class="rules"><summary>Regras de triagem</summary><ul>
+          <li><b>Pega se:</b> tem repo ou erro concreto, valor definido, stack que você domina, prazo realista.</li>
+          <li><b>Pula se:</b> "preciso de um app igual ao X" sem orçamento, pedido de chamada antes de dizer o problema, bounty com mais de 5 concorrentes já trabalhando.</li>
+          <li>Todo pedido vago vira oferta de <b>Diagnóstico pago</b>, nunca proposta grátis.</li></ul></details>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Tarefas</h2><span class="small muted">pendentes passam para o dia seguinte</span></div>
+        <form class="inline" data-form="todo"><input type="text" id="todo-new" placeholder="Nova tarefa, ex.: responder cliente X" aria-label="Nova tarefa"><button class="btn primary">Adicionar</button></form>
+        <div class="list">${todos.length?todos.map(t=>`<div class="row ${t.done?'done':''}"><input type="checkbox" id="td_${t.id}" data-act="todo" data-id="${t.id}" ${t.done?'checked':''}><label for="td_${t.id}"><div class="t" style="font-weight:500">${esc(t.text)}</div>${t.created<d&&!t.done?`<div class="d">desde ${fmtS(t.created)}</div>`:''}</label><button class="iconbtn" data-act="deltodo" data-id="${t.id}" aria-label="Remover">×</button></div>`).join(''):'<div class="empty">Nenhuma tarefa. Adicione entregas, respostas e pendências do dia.</div>'}</div>
+      </section>
+    </div>
+    <div class="col">
+      <section class="panel">
+        <div class="panel-head"><h2>Metas da semana ${pw}</h2><span class="small muted">${esc(g.foco)}</span></div>
+        <div class="list">${g.items.map(goalRow).join('')}</div>
+      </section>
+      <section class="panel">
+        <h2>Registro</h2>
+        <div class="fields">
+          <label class="field"><span>Horas de entrega</span><input type="number" min="0" step="0.25" id="deliv-${d}" data-bind="days.${d}.deliv" data-type="num" value="${day.deliv||''}" placeholder="0"></label>
+        </div>
+        <div class="field"><span>Prospecção extra (fora das missões)</span>
+          <form class="inline" data-form="extra"><select id="extra-p" aria-label="Plataforma">${PLATFORMS.map(p=>`<option>${esc(p)}</option>`).join('')}</select><input type="number" id="extra-m" min="5" step="5" value="15" style="width:80px" aria-label="Minutos"><span class="small muted">min</span><button class="btn">Somar</button></form>
+        </div>
+        ${(day.extra||[]).length?`<div class="list">${day.extra.map((e,i)=>`<div class="row"><span></span><div>${esc(e.p)}</div><div class="inline"><span class="mins">${e.min} min</span><button class="iconbtn" data-act="delextra" data-i="${i}" aria-label="Remover">×</button></div></div>`).join('')}</div>`:''}
+      </section>
+      <section class="panel">
+        <h2>Anotações do dia</h2>
+        <textarea id="note-${d}" data-bind="days.${d}.note" placeholder="O que funcionou, quem respondeu, preço praticado, ideias de estudo de caso…">${esc(day.note||'')}</textarea>
+      </section>
+    </div>
+  </div>`;
+}
+
+function vSemana(){
+  const cw=weekOf(today());const w=viewWeek||cw;const st=weekStats(w);const wk=S.weeks[w]||{};
+  const ghDate=addDays(today(),-7);
+  const q=`label:bounty state:open no:assignee language:${S.ghLang} created:>=${ghDate}`;
+  const steps=WEEKLY.map(it=>check(`weeks.${w}.steps.${it.id}`,!!(wk.steps&&wk.steps[it.id]),esc(it.t),esc(it.d)+(it.gh?`<div class="inline" style="margin-top:8px"><select data-bind="ghLang" id="gh-lang" aria-label="Linguagem">${['typescript','javascript','python','go','rust','solidity'].map(l=>`<option ${l===S.ghLang?'selected':''}>${l}</option>`).join('')}</select><a class="btn sm" target="_blank" rel="noopener" href="https://github.com/search?type=issues&q=${encodeURIComponent(q)}">Abrir busca no GitHub</a><button class="btn sm" data-act="copy" data-text="${esc(q)}">Copiar query</button></div><div style="margin-top:6px"><span class="kbd">${esc(q)}</span></div>`:''),it.min?`<span class="mins">${it.min} min</span>`:'')).join('');
+  const maxW=Math.max(4,cw);
+  const rows=[];for(let i=1;i<=maxW;i++){const s=weekStats(i);rows.push(`<tr class="${i===w?'cur':''}"><td class="mono">${i}</td><td class="mono small">${fmtS(s.a)}–${fmtS(s.b)}</td><td class="n">${s.prospH.toFixed(1)}</td><td class="n">${s.deliv.toFixed(1)}</td><td class="n">${s.closed}</td><td class="n">${usd(s.rev)}</td><td>${esc(s.best)||'<span class="muted">—</span>'}</td></tr>`)}
+  const up=Object.entries(S.reviews).filter(([,v])=>+v>=5).map(([p])=>p);
+  return `
+  <div class="datenav">
+    <button class="btn sm" data-act="week" data-n="-1" ${w<=1?'disabled':''} aria-label="semana anterior">‹</button>
+    <span class="lbl">Semana ${w} · ${fmtS(st.a)} a ${fmtS(st.b)}</span>
+    <button class="btn sm" data-act="week" data-n="1" aria-label="próxima semana">›</button>
+    ${w!==cw?'<button class="btn sm" data-act="week" data-n="0">Semana atual</button>':''}
+    <span class="chip">dia fixo: ${WDL[S.weeklyDay]}</span>
+  </div>
+  <div class="stats">
+    <div class="stat"><span class="eyebrow">Prospecção</span><span class="v">${st.prospH.toFixed(1)}<small> h</small></span></div>
+    <div class="stat"><span class="eyebrow">Entrega</span><span class="v">${st.deliv.toFixed(1)}<small> h</small></span></div>
+    <div class="stat"><span class="eyebrow">Pedidos pagos</span><span class="v">${st.closed}</span></div>
+    <div class="stat"><span class="eyebrow">Receita</span><span class="v">${usd(st.rev)}</span></div>
+  </div>
+  <div class="grid2">
+    <section class="panel">
+      <div class="panel-head"><h2>Rotina semanal</h2><span class="mono small muted">${cnt(WEEKLY.map(x=>x.id),wk.steps)}/${WEEKLY.length} · ~2 h</span></div>
+      <p class="small muted" style="margin:0">Bounty aqui é complemento e portfólio, não renda principal.</p>
+      <div class="list">${steps}</div>
+    </section>
+    <div class="col">
+      <section class="panel">
+        <h2>Revisão da semana</h2>
+        <label class="field"><span>Melhor plataforma (calculada: ${esc(st.best)||'sem vendas'})</span><select id="best-${w}" data-bind="weeks.${w}.best"><option value="">—</option>${PLATFORMS.map(p=>`<option ${wk.best===p?'selected':''}>${esc(p)}</option>`).join('')}</select></label>
+        <label class="field"><span>Decisões: o que cortar, o que dobrar</span><textarea id="wnote-${w}" data-bind="weeks.${w}.note" placeholder="Ex.: VibeFix 2 h sem bug compatível; manter mais 1 semana.">${esc(wk.note||'')}</textarea></label>
+        ${up.length?`<div class="alert info"><span class="k">preço</span><div>Com 5+ avaliações: <b>${up.map(esc).join(', ')}</b>. Suba os pacotes em 20 a 30%.</div></div>`:''}
+      </section>
+    </div>
+  </div>
+  <section class="panel">
+    <div class="panel-head"><h2>Histórico semanal</h2><span class="small muted">preenchido a partir do registro diário e dos clientes pagos</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Sem.</th><th>Período</th><th class="n">H prosp.</th><th class="n">H entrega</th><th class="n">Pedidos</th><th class="n">Receita</th><th>Melhor plataforma</th></tr></thead><tbody>${rows.join('')}</tbody></table></div>
+  </section>`;
+}
+
+function vMetas(){
+  const pw=planWeek(today()),ps=platStats();
+  const cards=[1,2,3,4].map(i=>{const g=GOALS[i];const a=addDays(S.startDate,(i-1)*7),b=i===4?addDays(S.startDate,29):addDays(a,6);const done=g.items.filter(x=>goalState(x).done).length;
+    return `<div class="wk ${i===pw?'cur':''}"><div class="panel-head"><h3>Semana ${i}</h3><span class="mono small muted">${done}/${g.items.length}</span></div><div class="when">dias ${(i-1)*7+1}–${i===4?30:i*7} · ${fmtS(a)} a ${fmtS(b)}</div><div class="small" style="font-weight:600">${esc(g.foco)}</div><div class="list">${g.items.map(goalRow).join('')}</div></div>`}).join('');
+  const rows=PLATFORMS.map(p=>{const s=ps[p],stt=status(p),cut=stt==='ativa'&&s.min>180&&s.sales===0;
+    return `<tr><td><b>${esc(p)}</b><div class="small muted">${esc(PLAT_INFO[p].role)} · ${esc(PLAT_INFO[p].prio)}</div></td><td class="n">${(s.min/60).toFixed(1)} h</td><td class="n">${s.sales}</td><td class="n">${usd(s.rev)}</td><td><div class="inline" style="flex-wrap:nowrap"><button class="btn sm" data-act="rev" data-p="${esc(p)}" data-n="-1" aria-label="menos uma avaliação">−</button><span class="mono" style="min-width:2ch;text-align:center">${+S.reviews[p]||0}</span><button class="btn sm" data-act="rev" data-p="${esc(p)}" data-n="1" aria-label="mais uma avaliação">+</button></div></td><td><select id="st-${uidOf(p)}" data-bind="status.${p}" aria-label="status">${[['ativa','Rotina diária'],['semanal','Só semanal'],['cortada','Cortada']].map(([v,l])=>`<option value="${v}" ${stt===v?'selected':''}>${l}</option>`).join('')}</select>${cut?' <span class="chip bad">critério de corte</span>':''}${(+S.reviews[p]||0)>=5?' <span class="chip ok">subir preço</span>':''}</td></tr>`}).join('');
+  return `
+  <section class="panel" style="gap:6px">
+    <h2>Plano de 30 dias</h2>
+    <p class="muted" style="margin:0">Objetivo do mês: 5 avaliações e o primeiro cliente de manutenção, não volume máximo. Metas com barra são calculadas sozinhas a partir de Setup, Clientes e avaliações.</p>
+  </section>
+  <div class="weeks">${cards}</div>
+  <section class="panel">
+    <div class="panel-head"><h2>Plataformas</h2><span class="small muted">Corte no dia 30: mais de 3 h de prospecção sem venda sai da rotina diária e vai para a semanal.</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Plataforma</th><th class="n">Prospecção</th><th class="n">Vendas</th><th class="n">Receita</th><th>Avaliações</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table></div>
+  </section>`;
+}
+function uidOf(s){return s.replace(/[^a-z0-9]/gi,'_')}
+
+function vClientes(){
+  const groups=STAGES.map(s=>{const cs=S.clients.filter(c=>c.stage===s.id);if(!cs.length)return'';
+    return `<div class="stage-group"><div class="gh"><h3>${s.l}</h3><span class="mono small muted">${cs.length}</span><span class="small muted">${esc(s.h)}</span></div>${cs.map(clientCard).join('')}</div>`}).join('');
+  return `
+  <section class="panel">
+    <h2>Novo pedido</h2>
+    <div class="funnel">${STAGES.slice(0,5).map((s,i)=>`${i?'<span>→</span>':''}<b>${s.l}</b>`).join('')}<span>→</span><b>Manutenção</b></div>
+    <form class="fields" data-form="client" style="align-items:end">
+      <label class="field"><span>Cliente / pedido</span><input type="text" id="cl-name" placeholder="ex.: SaaS Lovable com auth quebrada" required></label>
+      <label class="field"><span>Plataforma</span><select id="cl-plat">${PLATFORMS.map(p=>`<option>${esc(p)}</option>`).join('')}</select></label>
+      <label class="field"><span>Pacote</span><select id="cl-pkg">${PKGS.map(p=>`<option value="${p.id}">${esc(p.n)}</option>`).join('')}<option value="bounty">Bounty</option><option value="live">Sessão ao vivo</option></select></label>
+      <label class="field"><span>Valor (USD)</span><input type="number" id="cl-val" min="0" step="1" placeholder="0"></label>
+      <button class="btn primary">Adicionar</button>
+    </form>
+  </section>
+  ${groups||'<section class="panel"><div class="empty">Nenhum pedido ainda. Cada pedido passa pelo funil: triagem, diagnóstico pago, orçamento fechado, entrega e oferta de manutenção. Ao marcar <b>Entregue</b>, o app agenda o follow-up de 7 dias e avisa na aba Hoje.</div></section>'}`;
+}
+let openClient=null;
+function clientCard(c){
+  const p='clients.#'+c.id,due=c.followUp&&c.followUp<=today()&&c.stage!=='perdido';
+  const dg=c.diag||{};
+  return `<details class="client" ${openClient===c.id?'open':''} data-client="${c.id}"><summary><span class="nm">${esc(c.name)}</span><span class="chip">${esc(c.platform)}</span><span class="mono small">${c.value?usd(+c.value):''}</span>${c.paid?'<span class="chip ok">pago</span>':''}${due?`<span class="chip warn">follow-up ${fmtS(c.followUp)}</span>`:c.followUp?`<span class="chip">follow-up ${fmtS(c.followUp)}</span>`:''}</summary>
+  <div class="body">
+    <div class="fields">
+      <label class="field"><span>Etapa</span><select id="s-${c.id}" data-bind="${p}.stage">${STAGES.map(s=>`<option value="${s.id}" ${c.stage===s.id?'selected':''}>${s.l}</option>`).join('')}</select></label>
+      <label class="field"><span>Pacote</span><select id="k-${c.id}" data-bind="${p}.pkg">${PKGS.map(x=>[x.id,x.n]).concat([['bounty','Bounty'],['live','Sessão ao vivo']]).map(([v,l])=>`<option value="${v}" ${c.pkg===v?'selected':''}>${l}</option>`).join('')}</select></label>
+      <label class="field"><span>Plataforma</span><select id="p-${c.id}" data-bind="${p}.platform">${PLATFORMS.map(x=>`<option ${c.platform===x?'selected':''}>${esc(x)}</option>`).join('')}</select></label>
+      <label class="field"><span>Valor (USD)</span><input type="number" id="v-${c.id}" min="0" data-bind="${p}.value" data-type="num" value="${c.value||''}"></label>
+      <label class="field"><span>Follow-up em</span><input type="date" id="f-${c.id}" data-bind="${p}.followUp" value="${c.followUp||''}"></label>
+      <label class="field"><span>Pago em</span><span class="inline"><input type="checkbox" id="pd-${c.id}" data-check="${p}.paid" ${c.paid?'checked':''} aria-label="Pago"><input type="date" id="pdd-${c.id}" data-bind="${p}.paidDate" value="${c.paidDate||''}" ${c.paid?'':'disabled'} aria-label="Data do pagamento"></span></label>
+    </div>
+    <label class="field"><span>Notas (repo, erro, onde roda, acordos)</span><textarea id="n-${c.id}" data-bind="${p}.notes" style="min-height:80px">${esc(c.notes||'')}</textarea></label>
+    <details class="rules"><summary>Checklist de diagnóstico <span class="mono small muted">${cnt(DIAG.map((_,i)=>'d'+i),dg)}/${DIAG.length}</span></summary><div class="list" style="margin-top:6px">${DIAG.map((t,i)=>check(`${p}.diag.d${i}`,!!dg['d'+i],esc(t),'','')).join('')}</div></details>
+    <div class="inline">${c.followUp?`<button class="btn sm" data-act="fudone" data-id="${c.id}">Follow-up feito</button>`:''}<span style="flex:1"></span><span class="small muted">criado ${fmtS(c.created)}</span><button class="btn sm danger" data-act="delclient" data-id="${c.id}">Excluir</button></div>
+  </div></details>`;
+}
+
+function vModelos(){
+  return `
+  <section class="panel">
+    <div class="panel-head"><h2>Pacotes de preço fixo</h2><span class="small muted">Regra de ouro: nada de proposta aberta sem diagnóstico. O diagnóstico é abatido se o cliente fechar o conserto.</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Pacote</th><th>O que entrega</th><th>Prazo</th><th>Preço atual</th></tr></thead><tbody>${PKGS.map(k=>`<tr><td><b>${esc(k.n)}</b></td><td>${esc(k.w)}</td><td class="mono small">${esc(k.p)}</td><td><input type="text" id="pkg-${k.id}" data-bind="pkg.${k.id}" value="${esc(S.pkg[k.id]??k.v)}" style="width:150px" aria-label="Preço ${esc(k.n)}"></td></tr>`).join('')}</tbody></table></div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Modelos de mensagem</h2><span class="small muted">Em inglês. Edite à vontade, troque o que está entre colchetes e copie.</span></div>
+    ${TEMPLATES.map(t=>{const changed=S.tpl[t.id]!=null&&S.tpl[t.id]!==t.b;return `<div class="tpl"><div class="panel-head"><div><h3>${esc(t.t)}</h3><div class="small muted">${esc(t.u)}</div></div><div class="inline">${changed?`<button class="btn sm" data-act="tplreset" data-id="${t.id}">Restaurar original</button>`:''}<button class="btn sm primary" data-act="copytpl" data-id="${t.id}">Copiar</button></div></div><textarea class="code" id="tpl-${t.id}" data-bind="tpl.${t.id}" rows="${t.b.split('\n').length+1}">${esc(S.tpl[t.id]??t.b)}</textarea></div>`}).join('')}
+  </section>`;
+}
+
+function vSetup(){
+  const total=BASE.length+SETUP.reduce((a,p)=>a+p.steps.length,0);
+  const done=cnt(BASE.map(b=>b.id),S.setup)+SETUP.reduce((a,p)=>a+setupProg(p.id)[0],0);
+  return `
+  <section class="panel">
+    <div class="panel-head"><h2>Montagem</h2><span class="mono small muted">${done}/${total}</span></div>
+    ${bar(done,total)}
+    <p class="small muted" style="margin:0">Ordem: base no dia 1, Codementor e Fiverr no dia 2, VibeFix e humans fix ai no dia 3, o resto no dia 4. As telas de cada site podem mudar.</p>
+  </section>
+  <div class="grid2">
+    <section class="panel">
+      <div class="panel-head"><h2>Base antes das contas</h2><span class="chip acc">Dia 1</span></div>
+      <p class="small muted" style="margin:0">Monte uma vez e reaproveite: nenhum cadastro leva mais de 20 minutos.</p>
+      <div class="list">${BASE.map(b=>check('setup.'+b.id,!!S.setup[b.id],esc(b.t),esc(b.d))).join('')}</div>
+      <label class="field"><span>Rascunho da bio (1 linha · 3 linhas · 1 parágrafo)</span><textarea class="code" id="bio" data-bind="bio" placeholder="I fix broken apps and bugs, fast, at a fixed price.">${esc(S.bio||'')}</textarea></label>
+    </section>
+    <div class="col">${SETUP.map(p=>{const[c,t]=setupProg(p.id);return `<section class="panel"><div class="panel-head"><h3>${esc(p.name)}</h3><span class="inline"><span class="chip ${c===t?'ok':''}">${c===t?'no ar':esc(p.when)}</span><a class="small" href="${p.url}" target="_blank" rel="noopener">abrir site</a></span></div><div class="list">${p.steps.map((s,i)=>check('setup.'+p.id+i,!!S.setup[p.id+i],esc(s),'')).join('')}</div></section>`}).join('')}</div>
+  </div>`;
+}
+
+function vNotas(){
+  const days=Object.keys(S.days).filter(d=>S.days[d].note&&S.days[d].note.trim()).sort().reverse();
+  const weeks=Object.keys(S.weeks).filter(w=>S.weeks[w].note&&S.weeks[w].note.trim()).sort((a,b)=>b-a);
+  return `<div class="grid2">
+    <section class="panel"><div class="panel-head"><h2>Bloco de notas</h2><span class="small muted">ideias, aprendizados, links úteis</span></div><textarea id="scratch" data-bind="scratch" style="min-height:360px" placeholder="Stacks para estudar, clientes potenciais, perguntas frequentes, links de casos…">${esc(S.scratch)}</textarea></section>
+    <section class="panel"><h2>Diário</h2>
+      ${days.length||weeks.length?'':'<div class="empty">As anotações do dia (aba Hoje) e as decisões semanais aparecem aqui.</div>'}
+      ${weeks.map(w=>`<div class="note-entry"><span class="eyebrow">Semana ${w} · revisão</span><div class="txt">${esc(S.weeks[w].note)}</div></div>`).join('')}
+      ${days.map(d=>`<div class="note-entry"><a href="#hoje" data-act="goday" data-d="${d}" class="eyebrow" style="text-decoration:none">${fmtD(d)} · dia ${dayNum(d)}</a><div class="txt">${esc(S.days[d].note)}</div></div>`).join('')}
+    </section></div>`;
+}
+
+function vDados(){
+  return `<div class="grid2">
+    <section class="panel"><h2>Configuração</h2>
+      <div class="fields">
+        <label class="field"><span>Início do plano (dia 1)</span><input type="date" id="start" data-bind="startDate" value="${S.startDate}"></label>
+        <label class="field"><span>Dia da rotina semanal</span><select id="wday" data-bind="weeklyDay" data-type="num">${WDL.map((l,i)=>`<option value="${i}" ${S.weeklyDay===i?'selected':''}>${l}</option>`).join('')}</select></label>
+      </div>
+      <p class="small muted" style="margin:0">Tudo fica salvo só neste navegador, neste aparelho. Para usar em outro aparelho ou guardar um backup, copie os dados abaixo e importe do outro lado.</p>
+    </section>
+    <section class="panel"><h2>Backup</h2>
+      <div class="inline"><button class="btn primary" data-act="export">Copiar backup</button><label class="btn" for="imp-file">Importar arquivo .json</label><input type="file" id="imp-file" accept="application/json,.json" hidden></div>
+      <textarea class="code" id="imp-text" placeholder="Cole aqui um backup para importar" style="min-height:140px"></textarea>
+      <div class="inline"><button class="btn" data-act="import">Importar texto colado</button><span style="flex:1"></span><button class="btn danger" data-act="reset">Apagar tudo</button></div>
+    </section></div>`;
+}
+
+const VIEWS={hoje:vHoje,semana:vSemana,metas:vMetas,clientes:vClientes,modelos:vModelos,setup:vSetup,notas:vNotas,dados:vDados};
+function render(){
+  const y=window.scrollY;header();main.innerHTML=VIEWS[route()]();window.scrollTo(0,y);
+}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2000)}
+function copy(text,fallbackEl){
+  const ok=()=>toast('Copiado');
+  const fb=()=>{if(fallbackEl){fallbackEl.focus();fallbackEl.select();toast('Selecionado: use Ctrl/Cmd+C')}else toast('Não deu para copiar')};
+  try{navigator.clipboard.writeText(text).then(ok,fb)}catch(e){fb()}
+}
+
+/* ---------- eventos ---------- */
+const ACT={
+  day(el){const n=+el.dataset.n;viewDate=n===0?today():addDays(viewDate,n);render()},
+  week(el){const n=+el.dataset.n,cw=weekOf(today());viewWeek=n===0?null:Math.max(1,(viewWeek||cw)+n);render()},
+  goday(el){viewDate=el.dataset.d},
+  todo(el){const t=S.todos.find(x=>x.id===el.dataset.id);t.done=el.checked;t.doneDate=el.checked?viewDate:'';save();render()},
+  deltodo(el){S.todos=S.todos.filter(x=>x.id!==el.dataset.id);save();render()},
+  delextra(el){S.days[viewDate].extra.splice(+el.dataset.i,1);save();render()},
+  rev(el){const p=el.dataset.p;S.reviews[p]=Math.max(0,(+S.reviews[p]||0)+ +el.dataset.n);save();render()},
+  fudone(el){const c=S.clients.find(x=>x.id===el.dataset.id);c.followUp='';openClient=c.id;save();render()},
+  delclient(el){if(!arm(el))return;S.clients=S.clients.filter(x=>x.id!==el.dataset.id);save();render()},
+  copy(el){copy(el.dataset.text)},
+  copytpl(el){const ta=document.getElementById('tpl-'+el.dataset.id);copy(ta.value,ta)},
+  tplreset(el){delete S.tpl[el.dataset.id];save();render()},
+  export(){const ta=document.getElementById('imp-text');const j=JSON.stringify(S,null,1);ta.value=j;copy(j,ta)},
+  import(){doImport(document.getElementById('imp-text').value)},
+  reset(el){if(!arm(el))return;S=defaults();save();render();toast('Dados apagados')}
+};
+function arm(el){if(el.classList.contains('armed'))return true;el.classList.add('armed');const t=el.textContent;el.textContent='Confirmar';setTimeout(()=>{el.classList.remove('armed');el.textContent=t},3500);return false}
+function doImport(txt){
+  try{const o=JSON.parse(txt);if(!o||typeof o!=='object'||!o.days)throw 0;S=Object.assign(defaults(),o);save();render();toast('Backup importado')}
+  catch(e){toast('Esse texto não é um backup válido da Bancada')}
+}
+document.addEventListener('click',e=>{const a=e.target.closest('[data-act]');if(a&&ACT[a.dataset.act]){if(a.tagName==='BUTTON')e.preventDefault();ACT[a.dataset.act](a,e)}});
+document.addEventListener('toggle',e=>{const c=e.target.dataset&&e.target.dataset.client;if(c)openClient=e.target.open?c:(openClient===c?null:openClient)},true);
+document.addEventListener('change',e=>{
+  const el=e.target;
+  if(el.id==='imp-file'&&el.files[0]){const r=new FileReader();r.onload=()=>doImport(r.result);r.readAsText(el.files[0]);return}
+  if(el.dataset.check){
+    set(el.dataset.check,el.checked);
+    const m=el.dataset.check.match(/^clients\.#(\w+)\.paid$/);
+    if(m){const c=S.clients.find(x=>x.id===m[1]);c.paidDate=el.checked?(c.paidDate||today()):'';openClient=c.id}
+    save();render();return;
+  }
+  if(el.dataset.bind&&el.tagName!=='TEXTAREA'&&el.type!=='text'){
+    let v=el.dataset.type==='num'?(el.value===''?'':Number(el.value)):el.value;
+    if(el.dataset.bind==='startDate'&&!v)return;
+    set(el.dataset.bind,v);
+    const m=el.dataset.bind.match(/^clients\.#(\w+)\.(\w+)$/);
+    if(m){const c=S.clients.find(x=>x.id===m[1]);openClient=c.id;if(m[2]==='stage'&&v==='entregue'&&!c.followUp)c.followUp=addDays(today(),7);if(m[2]==='stage'&&v==='perdido')c.followUp=''}
+    save();render();
+  }
+});
+document.addEventListener('input',e=>{const el=e.target;if(el.dataset.bind&&(el.tagName==='TEXTAREA'||el.type==='text')){set(el.dataset.bind,el.value);saveSoon()}});
+document.addEventListener('submit',e=>{
+  e.preventDefault();const f=e.target.dataset.form;
+  if(f==='todo'){const i=document.getElementById('todo-new');const v=i.value.trim();if(!v)return;S.todos.push({id:uid(),text:v,done:false,created:viewDate});save();render();document.getElementById('todo-new').focus()}
+  if(f==='extra'){const p=document.getElementById('extra-p').value,m=+document.getElementById('extra-m').value;if(!m)return;const d=S.days[viewDate]||(S.days[viewDate]={});(d.extra||(d.extra=[])).push({p,min:m});save();render()}
+  if(f==='client'){const name=document.getElementById('cl-name').value.trim();if(!name)return;const id=uid();
+    S.clients.unshift({id,name,platform:document.getElementById('cl-plat').value,pkg:document.getElementById('cl-pkg').value,value:+document.getElementById('cl-val').value||'',stage:'triagem',created:today(),paid:false,paidDate:'',followUp:'',notes:'',diag:{}});
+    openClient=id;save();render();toast('Pedido adicionado em Triagem')}
+});
+window.addEventListener('hashchange',()=>{render();window.scrollTo(0,0)});
+// virar o dia com o app aberto
+let lastDay=today();setInterval(()=>{if(today()!==lastDay){if(viewDate===lastDay)viewDate=today();lastDay=today();render()}},60000);
+render();
+document.getElementById('saved').textContent='dados locais';
+})();
+</script>
+</body>
+</html>
